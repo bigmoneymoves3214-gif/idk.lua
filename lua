@@ -8,7 +8,7 @@ local player = Players.LocalPlayer
 local oldGui = player:WaitForChild("PlayerGui"):FindFirstChild("OGBrainrot")
 if oldGui then oldGui:Destroy() end
 
-local enabled = false
+local enabled = true
 local running = false
 
 -- Always queue script for next teleport (so it persists across multiple hops)

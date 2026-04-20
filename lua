@@ -8,8 +8,8 @@ local player = Players.LocalPlayer
 local oldGui = player:WaitForChild("PlayerGui"):FindFirstChild("OGBrainrot")
 if oldGui then oldGui:Destroy() end
 
-local enabled = true
-local running = true
+local enabled = false
+local running = false
 
 -- Always queue script for next teleport (so it persists across multiple hops)
 pcall(function()
@@ -298,3 +298,8 @@ btn.MouseButton1Click:Connect(function()
         setStatus("Idle")
     end
 end)
+
+-- Auto-start
+btn.Text = "OG Farm: ON"
+btn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+task.spawn(mainLoop)

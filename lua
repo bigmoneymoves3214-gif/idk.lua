@@ -10,6 +10,7 @@ if oldGui then oldGui:Destroy() end
 
 local enabled = false
 local running = false
+local pickupAttempts = {} -- Track attempts per brainrot
 
 -- Always queue script for next teleport (so it persists across multiple hops)
 pcall(function()
@@ -190,8 +191,17 @@ local function mainLoop()
                 log("  -> CharRarity found: '" .. rarityText .. "'")
                 
                 if rarityText:lower() == "og" then
+                    -- Check attempt count
+                    local modelId = model.Name .. "_" .. tostring(model:GetDebugId())
+                    pickupAttempts[modelId] = (pickupAttempts[modelId] or 0) + 1
+                    
+                    if pickupAttempts[modelId] > 2 then
+                        log("  -> Skipping (already tried 2 times)")
+                        continue
+                    end
+                    
                     foundOG = true
-                    log("  -> OG FOUND!")
+                    log("  -> OG FOUND! (attempt " .. pickupAttempts[modelId] .. "/2)")
                     setStatus("Found OG: " .. model.Name)
                     
                     -- Find and modify pickup prompt

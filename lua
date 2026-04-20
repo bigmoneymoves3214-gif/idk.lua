@@ -73,10 +73,10 @@ local function setStatus(text)
     statusLabel.Text = text
 end
 
-local function holdE(duration)
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-    task.wait(duration)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+local function firePrompt(prompt)
+    if prompt and prompt:IsA("ProximityPrompt") then
+        fireproximityprompt(prompt)
+    end
 end
 
 local function parseTimer(text)

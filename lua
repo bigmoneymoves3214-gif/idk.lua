@@ -11,6 +11,18 @@ if oldGui then oldGui:Destroy() end
 local enabled = false
 local running = false
 
+-- Always queue script for next teleport (so it persists across multiple hops)
+pcall(function()
+    local queueFunc = queueonteleport or queue_on_teleport
+    if queueFunc then
+        queueFunc([[
+            repeat task.wait() until game:IsLoaded()
+            task.wait(2)
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/bigmoneymoves3214-gif/idk.lua/refs/heads/main/lua"))()
+        ]])
+    end
+end)
+
 -- UI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "OGBrainrot"
@@ -177,7 +189,7 @@ local function mainLoop()
                 local rarityText = charRarity.Text or ""
                 log("  -> CharRarity found: '" .. rarityText .. "'")
                 
-                if rarityText:lower() == "og" then
+                if rarityText:lower() == "og" or rarityText:lower() == "god" then
                     foundOG = true
                     log("  -> OG FOUND!")
                     setStatus("Found OG: " .. model.Name)

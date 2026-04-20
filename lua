@@ -189,7 +189,7 @@ local function mainLoop()
                 local rarityText = charRarity.Text or ""
                 log("  -> CharRarity found: '" .. rarityText .. "'")
                 
-                if rarityText:lower() == "og" or rarityText:lower() == "god" then
+                if rarityText:lower() == "og" then
                     foundOG = true
                     log("  -> OG FOUND!")
                     setStatus("Found OG: " .. model.Name)

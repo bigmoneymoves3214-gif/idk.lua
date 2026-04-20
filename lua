@@ -85,7 +85,7 @@
                 queueFunc([[
                     repeat task.wait() until game:IsLoaded()
                     task.wait(2)
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/YOUR_SCRIPT_URL_HERE/og_brainrot.lua"))()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/bigmoneymoves3214-gif/idk.lua/refs/heads/main/lua"))()
                 ]])
             end
         end)

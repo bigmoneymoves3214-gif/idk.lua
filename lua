@@ -300,6 +300,7 @@ btn.MouseButton1Click:Connect(function()
 end)
 
 -- Auto-start
+enabled = true
 btn.Text = "OG Farm: ON"
 btn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
 task.spawn(mainLoop)

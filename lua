@@ -1,18 +1,15 @@
 local Players = game:GetService("Players")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
--- Destroy old UI if exists
 local oldGui = player:WaitForChild("PlayerGui"):FindFirstChild("OGBrainrot")
 if oldGui then oldGui:Destroy() end
 
 local enabled = false
 local running = false
-local pickupAttempts = {} -- Track attempts per brainrot
+local pickupAttempts = {}
 
--- Always queue script for next teleport (so it persists across multiple hops)
 pcall(function()
     local queueFunc = queueonteleport or queue_on_teleport
     if queueFunc then
@@ -24,7 +21,6 @@ pcall(function()
     end
 end)
 
--- UI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "OGBrainrot"
 screenGui.ResetOnSpawn = false
@@ -74,13 +70,23 @@ local function setStatus(text)
 end
 
 local function firePrompt(prompt)
-    if prompt and prompt:IsA("ProximityPrompt") then
+    if not prompt or not prompt:IsA("ProximityPrompt") then return end
+    
+    if fireproximityprompt then
         fireproximityprompt(prompt)
+    elseif prompt.Enabled then
+        local oldHold = prompt.HoldDuration
+        local oldDistance = prompt.MaxActivationDistance
+        prompt.HoldDuration = 0
+        prompt.MaxActivationDistance = 9999
+        prompt:InputHoldBegin()
+        prompt:InputHoldEnd()
+        prompt.HoldDuration = oldHold
+        prompt.MaxActivationDistance = oldDistance
     end
 end
 
 local function parseTimer(text)
-    -- "OG Brainrot in 1:46" -> returns seconds
     local min, sec = text:match("(%d+):(%d+)")
     if min and sec then
         return tonumber(min) * 60 + tonumber(sec)
@@ -90,8 +96,6 @@ end
 
 local function serverHop()
     setStatus("Server hopping...")
-    
-    -- Queue script for next server
     pcall(function()
         local queueFunc = queueonteleport or queue_on_teleport
         if queueFunc then
@@ -102,22 +106,18 @@ local function serverHop()
             ]])
         end
     end)
-    
     local placeId = game.PlaceId
     local servers = {}
-    
     pcall(function()
         local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
         local response = game:HttpGet(url)
         local data = HttpService:JSONDecode(response)
-        
         for _, server in ipairs(data.data or {}) do
             if server.playing < server.maxPlayers and server.id ~= game.JobId then
                 table.insert(servers, server.id)
             end
         end
     end)
-    
     if #servers > 0 then
         local randomServer = servers[math.random(1, #servers)]
         TeleportService:TeleportToPlaceInstance(placeId, randomServer, player)
@@ -126,12 +126,7 @@ local function serverHop()
     end
 end
 
-local function log(msg)
-    print("[OG Farm] " .. msg)
-end
-
 local function findCharRarity(instance)
-    -- Recursively search for CharRarity TextLabel
     for _, child in pairs(instance:GetDescendants()) do
         if child.Name == "CharRarity" and (child:IsA("TextLabel") or child:IsA("TextBox")) then
             return child
@@ -141,7 +136,6 @@ local function findCharRarity(instance)
 end
 
 local function findPickupPrompt(instance)
-    -- Search for ProximityPrompt
     for _, child in pairs(instance:GetDescendants()) do
         if child:IsA("ProximityPrompt") then
             return child
@@ -151,85 +145,42 @@ local function findPickupPrompt(instance)
 end
 
 local function mainLoop()
-    log("Main loop started")
     while enabled and screenGui.Parent do
         running = true
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        
         if not hrp then
-            log("No HRP, waiting...")
             task.wait(0.5)
             continue
         end
-        
         local brainrots = workspace:FindFirstChild("Brainrots")
         if not brainrots then
-            setStatus("No Brainrots model")
-            log("No Brainrots model found in workspace")
+            setStatus("No Brainrots")
             task.wait(1)
             continue
         end
-        
-        log("Brainrots found: " .. brainrots.ClassName)
-
         local children = brainrots:GetChildren()
-        log("Found " .. #children .. " brainrots")
-        setStatus("Scanning " .. #children .. " brainrots")
-        
+        setStatus("Scanning " .. #children)
         local foundOG = false
-        
         for _, model in pairs(children) do
             if not enabled then break end
-            
-            log("Checking: " .. model.Name .. " (" .. model.ClassName .. ")")
-            
-            -- Find CharRarity anywhere in the model
             local charRarity = findCharRarity(model)
             if charRarity then
                 local rarityText = charRarity.Text or ""
-                log("  -> CharRarity found: '" .. rarityText .. "'")
-                
                 if rarityText:lower() == "og" then
-                    -- Check attempt count
                     local modelId = model.Name .. "_" .. tostring(model:GetDebugId())
                     pickupAttempts[modelId] = (pickupAttempts[modelId] or 0) + 1
-                    
                     if pickupAttempts[modelId] > 2 then
-                        log("  -> Skipping (already tried 2 times)")
                         continue
                     end
-                    
                     foundOG = true
-                    log("  -> OG FOUND! (attempt " .. pickupAttempts[modelId] .. "/2)")
-                    setStatus("Found OG: " .. model.Name)
-                    
-                    -- Find and modify pickup prompt
+                    setStatus("Found: " .. model.Name)
                     local pickupPrompt = findPickupPrompt(model)
                     if pickupPrompt then
-                        log("  -> PickupPrompt found, setting HoldDuration to 0")
-                        pickupPrompt.HoldDuration = 0
-                    else
-                        log("  -> No PickupPrompt found")
+                        setStatus("Picking up...")
+                        firePrompt(pickupPrompt)
+                        task.wait(0.3)
                     end
-                    
-                    -- Teleport to brainrot (find any part to teleport to)
-                    local targetPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
-                    if targetPart then
-                        log("  -> Teleporting to " .. targetPart.Name)
-                        hrp.CFrame = targetPart.CFrame
-                    else
-                        log("  -> No part to teleport to")
-                    end
-                    task.wait(0.3)
-                    
-                    -- Hold E for 2 seconds
-                    setStatus("Picking up...")
-                    log("  -> Holding E...")
-                    holdE(2)
-                    task.wait(0.5)
-                    
-                    -- Teleport to upgrades shop
                     local shops = workspace:FindFirstChild("Shops")
                     if shops then
                         local upgrades = shops:FindFirstChild("Upgrades")
@@ -237,26 +188,16 @@ local function mainLoop()
                             local shopPart = upgrades.PrimaryPart or upgrades:FindFirstChildWhichIsA("BasePart")
                             if shopPart then
                                 hrp.CFrame = shopPart.CFrame
-                                log("  -> Teleported to Upgrades shop")
                             end
-                            setStatus("At Upgrades shop")
-                        else
-                            log("  -> No Upgrades in Shops")
+                            setStatus("At shop")
                         end
-                    else
-                        log("  -> No Shops folder")
                     end
-                    
                     task.wait(1)
                     break
                 end
-            else
-                log("  -> No CharRarity found")
             end
         end
-        
         if not foundOG and enabled then
-            -- Check countdown timer
             local countdownSign = workspace:FindFirstChild("CountdownSign")
             if countdownSign then
                 local signPart = countdownSign:FindFirstChild("SignPart")
@@ -269,12 +210,11 @@ local function mainLoop()
                             if ogLabel then
                                 local timerText = ogLabel.Text or ""
                                 local seconds = parseTimer(timerText)
-                                
                                 if seconds <= 30 then
-                                    setStatus("Waiting... " .. seconds .. "s")
+                                    setStatus("Waiting " .. seconds .. "s")
                                     task.wait(1)
                                 else
-                                    setStatus("Timer > 30s, hopping...")
+                                    setStatus("Hopping...")
                                     task.wait(1)
                                     serverHop()
                                     return
@@ -284,11 +224,10 @@ local function mainLoop()
                     end
                 end
             else
-                setStatus("No countdown sign")
+                setStatus("No sign")
                 task.wait(1)
             end
         end
-        
         task.wait(0.5)
     end
     running = false
@@ -309,7 +248,6 @@ btn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Auto-start
 enabled = true
 btn.Text = "OG Farm: ON"
 btn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
